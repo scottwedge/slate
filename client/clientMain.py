@@ -26,7 +26,7 @@ def getUsername():
 def clientMessaging(s, username):
     if keyboard.is_pressed(cfg.typeHotkey):
         message = input(username+"> ")
-        send(s,username+"> "+message)
+        send(s,message)
 
 def clientRecieving(s):
     #try catch to avoid timeout if no message is sent

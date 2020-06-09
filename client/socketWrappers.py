@@ -3,7 +3,7 @@ import config as cfg
 import state
 
 def connect(username):
-    ip=input("what ip would you like to connect to: ")
+    ip=input("What IP Would You Like to Connect to: ")
     ip.strip()
 
     #ipv4 socket using tcp
@@ -13,7 +13,7 @@ def connect(username):
     #connect to server
     s.connect((ip, cfg.port))
     state.serverActive=True
-    send(s, f"{username} Conected")
+    send(s, username)
     s.settimeout(cfg.waitTime)
     return s
 
@@ -22,7 +22,7 @@ def send(s,message):
         s.send(bytes(message,cfg.encoding))
     except:
         state.serverActive = False
-        print("Server: Closed")
+        print("Server Closed")
     
 def recieve(s):
     inMessage = s.recv(cfg.bufferSize)

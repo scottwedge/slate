@@ -6,4 +6,4 @@ encoding="utf-8"
 
 waitTime=0.1
 
-typeHotkey='ctrl+space'
+typeHotkey='shift+tab'
