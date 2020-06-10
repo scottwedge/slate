@@ -8,15 +8,18 @@ import state
 
 def getUsername():
     try:
-        file = open("usernames.txt", 'r')
+        file = open("username.txt", 'r')
 
-        if not file:
-            raise Exception("file empty")
+        username = file.readline()
+        if not username:
+            file = open("username.txt", 'w')
+            username = input("Hello New User, Whats Your Name: ")
+            file.write(username)
 
         username = file.readline()
 
     except IOError:
-        file = open("usernames.txt", 'w')
+        file = open("username.txt", 'w')
         username = input("Hello New User, Whats Your Name: ")
         file.write(username)
 

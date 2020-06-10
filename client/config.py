@@ -4,6 +4,6 @@ bufferSize = 1024
 
 encoding="utf-8"
 
-waitTime=0.1
+waitTime=0.01
 
 typeHotkey='shift+tab'
