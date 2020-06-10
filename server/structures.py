@@ -17,16 +17,15 @@ class ClientData:
         clientList.remove(self)
         self.sock.close()
         self.lock.release()
-        return self.username
     
 
 class MessageQueue:
     def __init__(self):
         self.queue=Queue()
-    def put(self,message, username="", messangerID = -1):
-        self.queue.put((username,message,messangerID))
+    def put(self,message, username=""):
+        self.queue.put((username,message))
     def get(self):
         val = self.queue.get()
-        return val[0],val[1],val[2]
+        return val[0],val[1]
     def empty(self):
         return self.queue.empty()

@@ -6,4 +6,4 @@ encoding="utf-8"
 
 queueLen=5
 
-waitTime=0
+waitTime=0.001

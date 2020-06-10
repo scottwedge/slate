@@ -1,5 +1,4 @@
 import socket
-import keyboard
 from time import sleep
 
 from helpers import startServer, sendPacket, getPacket, getRoomName
@@ -38,19 +37,17 @@ class Server:
         
     def recieving(self):
         while self.running:
-            for i,client in enumerate(self.clients):
+            for client in self.clients:
                 try:
-
                     client.lock.acquire()
                     eot,message = getPacket(client.sock)
-
                     #client disconnecting
                     if eot:
                         client.lock.release()
-                        self.dropClient(i)
+                        self.dropClient(client)
                         continue
                     
-                    self.messageQueue.put(message, client.username,client.id)
+                    self.messageQueue.put(message, client.username)
                     client.lock.relase()
                 except:
                     client.lock.release()
@@ -58,21 +55,24 @@ class Server:
     def relay(self):
         while self.running:
             if not self.messageQueue.empty():
-                username,message,messangerID = self.messageQueue.get()
+                username,message = self.messageQueue.get()
                 print(f"{username}> {message}")
                 for client in self.clients:
                     try:
                         client.lock.acquire()
-                        if client.id!= messangerID:
-                            sendPacket(client.sock,False,username,message)
-                        
+                        sendPacket(client.sock,False,username,message)
                         client.lock.release()
+                    
+                    #client not recieving packets
                     except:
                         client.lock.release()
-    
-    def dropClient(self,i):
-        username = self.clients[i].remove(self.clients)
-        self.messageQueue.put(f"{username} Disconnected")
+                        self.dropClient(client)
+
+
+    def dropClient(self,client):
+        self.messageQueue.put(f"{client.username} Disconnected")
+        self.clients.remove(client)
+        
 
     def disconnectAll(self):
         print(f"Closing {self.roomName}")
@@ -81,7 +81,7 @@ class Server:
                 client.lock.acquire()
                 sendPacket(client.sock,True,"",f"{self.roomName} has Closed")
                 client.lock.release()
-                _ = client.remove(self.clients)
+                client.remove(self.clients)
             except:
                 client.lock.release()
 
