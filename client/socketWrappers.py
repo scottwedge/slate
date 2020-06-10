@@ -1,30 +1,28 @@
 import socket
 import config as cfg
-import state
+import marshal
 
-def connect(username):
-    ip=input("What IP Would You Like to Connect to: ")
+def connect(ip):
     ip.strip()
-
     #ipv4 socket using tcp
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     #connect to server
-    s.connect((ip, cfg.port))
-    state.serverActive=True
-    send(s, username)
-    s.settimeout(cfg.waitTime)
-    return s
+    sock.connect((ip, cfg.port))
+    sock.settimeout(cfg.waitTime)
+    return sock
 
-def send(s,message):
+def sendPacket(sock, eot, message):
     try:
-        s.send(bytes(message,cfg.encoding))
+        packet = marshal.dumps((eot,bytes(message,cfg.encoding)))
+        sock.send(packet)
+        return True
     except:
-        state.serverActive = False
-        print("Server Closed")
-    
-def recieve(s):
-    inMessage = s.recv(cfg.bufferSize)
-    inMessage = inMessage.decode(cfg.encoding)
-    return inMessage
+        return False
+
+def getPacket(sock):
+    packet = sock.recv(cfg.bufferSize)
+    eot,username,text = marshal.loads(packet)
+    username = username.decode(cfg.encoding)
+    text = text.decode(cfg.encoding)
+    return eot,username,text

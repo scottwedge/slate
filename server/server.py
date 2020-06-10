@@ -3,58 +3,14 @@ import keyboard
 import threading
 from time import sleep
 from queue import Queue
-from socketWrappers import startServer, send, recieve
+from helpers import startServer, sendPacket, getPacket, getRoomName
+from structures import ClientData,MessageQueue
 
 import config as cfg
 
 
-def getRoomName():
-    try:
-        file = open("roomName.txt", 'r')
-
-        name = file.readline()
-        if not name:
-            file = open("roomName.txt", 'w')
-            name = input("What Would You Like To Name This Chat Room: ")
-            file.write(name)
-
-    except IOError:
-        file = open("roomName.txt", 'w')
-        name = input("What Would You Like To Name This Chat Room: ")
-        file.write(name)
-
-    return name
-
-#holds client data and thread locks
-class Client:
-    def __init__(self,sock,address,username,Id):
-        self.lock=threading.Lock()
-
-        self.lock.acquire()
-        self.username = username
-        self.id = Id
-        self.sock=sock
-        self.lock.release()
-
-    def remove(self,clientList):
-        self.lock.acquire()
-        clientList.remove(self)
-        self.sock.close()
-        self.lock.release()
-        return self.username
-    
 
 
-class MessageQueue:
-    def __init__(self):
-        self.queue=Queue()
-    def put(self,message, messangerID = -1):
-        self.queue.put((message,messangerID))
-    def get(self):
-        val = self.queue.get()
-        return val[0],val[1]
-    def empty(self):
-        return self.queue.empty()
 
 class Server:
     def __init__(self):
@@ -97,9 +53,11 @@ class Server:
         while self.running:
             clientSocket, addr = self.s.accept()
             clientSocket.settimeout(cfg.waitTime)
-            clientUsername = recieve(clientSocket)
 
-            self.clients.append(Client(clientSocket,addr,clientUsername,self.nextClientID))
+            #gets username
+            _,clientUsername = getPacket(clientSocket)
+
+            self.clients.append(ClientData(clientSocket,addr,clientUsername,self.nextClientID))
             self.nextClientID+=1
 
             self.messageQueue.put(f"{clientUsername} Joined {self.roomName}")
@@ -107,11 +65,19 @@ class Server:
         
     def recieving(self):
         while self.running:
-            for client in self.clients:
+            for i,client in enumerate(self.clients):
                 try:
+
                     client.lock.acquire()
-                    message = recieve(client.sock)
-                    self.messageQueue.put(f"{client.username}> {message}",client.id)
+                    eot,message = getPacket(client.sock)
+
+                    #client disconnecting
+                    if eot:
+                        client.lock.release()
+                        self.dropClient(i)
+                        continue
+                    
+                    self.messageQueue.put(f"{client.username}> {message}", client.username,client.id)
                     client.lock.relase()
                 except:
                     client.lock.release()
@@ -119,21 +85,20 @@ class Server:
     def relay(self):
         while self.running:
             if not self.messageQueue.empty():
-                message,messangerID = self.messageQueue.get()
+                username,message,messangerID = self.messageQueue.get()
                 print(message)
                 for client in self.clients:
-                
                     try:
                         client.lock.acquire()
                         if client.id!= messangerID:
-                            send(client.sock,message)
+                            sendPacket(client.sock,False,username,message)
                         
                         client.lock.release()
                     except:
                         client.lock.release()
     
     def dropClient(self,i):
-        username = self.clients[i].remove()
+        username = self.clients[i].remove(self.clients)
         self.messageQueue.put(f"{username} Disconnected")
 
     def disconnectAll(self):
@@ -141,16 +106,16 @@ class Server:
         for client in self.clients:
             try:
                 client.lock.acquire()
-                send(client.sock,f"{self.roomName} has Closed")
+                sendPacket(client.sock,True,"",f"{self.roomName} has Closed")
                 client.lock.release()
-                _ = client.remove()
+                _ = client.remove(self.clients)
             except:
                 client.lock.release()
 
 if __name__ == "__main__":
     serv=Server()
     serv.startThreads()
-    while True:
+    while serv.running:
         sleep(10)
 
     serv.disconnectAll()
