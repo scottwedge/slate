@@ -1,33 +1,19 @@
 import socket
 import keyboard
+from time import sleep
 
-from socketWrappers import connect, sendPacket, getPacket
+from helpers import connect, sendPacket, getPacket, getUsername
+import threads
 import struct
 import config as cfg
-
-def getUsername():
-    try:
-        file = open("username.txt", 'r')
-
-        username = file.readline()
-        if not username:
-            file = open("username.txt", 'w')
-            username = input("Hello New User, Whats Your Name: ")
-            file.write(username)
-
-
-    except IOError:
-        file = open("username.txt", 'w')
-        username = input("Hello New User, Whats Your Name: ")
-        file.write(username)
-    return username
-
 
 class Client:
     def __init__(self):
 
         self.username = getUsername()
         self.connectToServ()
+
+        self.threads=[]
 
     def connectToServ(self):
         while True:
@@ -45,7 +31,7 @@ class Client:
                     continue
 
                 self.sock = sock
-                self.serverActive = True
+                self.running = True
                 return
             except:
                 print("Can't Connect to IP")
@@ -54,36 +40,40 @@ class Client:
         sendPacket(self.sock,True,"")
         self.sock.close()
 
-    def messaging(self):
-        message = input(self.username+"> ")
+    def sending(self):
+        while self.running:
+            if keyboard.is_pressed(cfg.typeHotkey):
+                message = input(self.username+"> ")
+                eot=False
+                if message == cfg.closePhrase:
+                    eot=True
+                    self.running = False
 
-        eot=False
-        if message == cfg.closePhrase:
-            eot=True
-            self.serverActive = False
+                sent = sendPacket(self.sock,eot,message)
+                if not sent:
+                    print("Server Disconnected")
+                    self.running=False
 
-        sent = sendPacket(self.sock,eot,message)
-        if not sent:
-            print("Server Disconnected")
-            self.serverActive=False
+    def recieving(self):
+        while self.running:
+            try:
+                eot,username,message = getPacket(self.sock)
+                # checks eot
+                if eot:
+                    self.running = False
+                    print(message)
+                else:
+                    print(f"{username}> {message}")
+            except:
+                print("Server Disconnected")
+                self.running = False
 
-    def parseNextPacket(self):
-        try:
-            eot,username,message = getPacket(self.sock)
-            # checks eot
-            if eot:
-                self.serverActive = False
-                print(message)
-            else:
-                print(f"{username}> {message}")
-        except:
-            pass
+
 
 
 
 if __name__ == "__main__":
     client=Client()
-    while client.serverActive:
-        if keyboard.is_pressed(cfg.typeHotkey):
-            client.messaging()
-        client.parseNextPacket()
+    threads.startThreads(client)
+    while client.running:
+        sleep(10)

@@ -1,15 +1,11 @@
 import socket
 import keyboard
-import threading
 from time import sleep
-from queue import Queue
+
 from helpers import startServer, sendPacket, getPacket, getRoomName
 from structures import ClientData,MessageQueue
-
+import threads 
 import config as cfg
-
-
-
 
 
 class Server:
@@ -25,29 +21,6 @@ class Server:
 
         self.clients = []
         self.threads=[]
-        
-
-
-    def startThreads(self):
-        for _ in range(0,cfg.numThreads):
-            t = threading.Thread(target = self.threadWork)
-            t.daemon = True
-            t.start()
-            self.threads.append(t)
-
-    def threadWork(self):
-        #queue and switch is so threads get assigned their proper jobs
-        job = cfg.jobQueue.get()
-
-        if job == "connections":
-            self.awaitConnections()
-            
-        if job == "recieve":
-            self.recieving()
-        
-        if job == "relay":
-            self.relay()
-
 
     def awaitConnections(self):
         while self.running:
@@ -77,7 +50,7 @@ class Server:
                         self.dropClient(i)
                         continue
                     
-                    self.messageQueue.put(f"{client.username}> {message}", client.username,client.id)
+                    self.messageQueue.put(message, client.username,client.id)
                     client.lock.relase()
                 except:
                     client.lock.release()
@@ -86,7 +59,7 @@ class Server:
         while self.running:
             if not self.messageQueue.empty():
                 username,message,messangerID = self.messageQueue.get()
-                print(message)
+                print(f"{username}> {message}")
                 for client in self.clients:
                     try:
                         client.lock.acquire()
@@ -114,7 +87,7 @@ class Server:
 
 if __name__ == "__main__":
     serv=Server()
-    serv.startThreads()
+    threads.startThreads(serv)
     while serv.running:
         sleep(10)
 

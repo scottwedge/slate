@@ -1,7 +1,26 @@
 import socket
 import config as cfg
 import marshal
+def getUsername():
+    try:
+        file = open("username.txt", 'r')
 
+        username = file.readline()
+        if not username:
+            file = open("username.txt", 'w')
+            username = input("Hello New User, Whats Your Name: ")
+            file.write(username)
+
+
+    except IOError:
+        file = open("username.txt", 'w')
+        username = input("Hello New User, Whats Your Name: ")
+        file.write(username)
+    return username
+
+#-------------------#
+#  Socket Wrappers  #
+#-------------------#
 def connect(ip):
     ip.strip()
     #ipv4 socket using tcp

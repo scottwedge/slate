@@ -20,6 +20,10 @@ def getRoomName():
     print(f"Server Name: {name}")
     return name
 
+
+#-------------------#
+#  Socket Wrappers  #
+#-------------------#
 def startServer():
     #waits for server to close before restarting
     while True:
