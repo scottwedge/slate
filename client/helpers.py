@@ -41,7 +41,7 @@ def sendPacket(sock, eot, message):
 
 def getPacket(sock):
     packet = sock.recv(cfg.bufferSize)
-    eot,username,text = marshal.loads(packet)
+    eot,userChange,username,text = marshal.loads(packet)
     username = username.decode(cfg.encoding)
     text = text.decode(cfg.encoding)
-    return eot,username,text
+    return eot,userChange,username,text

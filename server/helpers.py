@@ -42,8 +42,8 @@ def startServer():
 # eot - bool notifying server is closing
 # username - username of messanger
 # message - text to be displaied
-def sendPacket(sock,eot,username,message):
-    packet = marshal.dumps( (eot,
+def sendPacket(sock,eot,userListFlag,username,message):
+    packet = marshal.dumps( (eot, userListFlag,
                         bytes(username,cfg.encoding),
                         bytes(message,cfg.encoding)) )
 

@@ -22,10 +22,10 @@ class ClientData:
 class MessageQueue:
     def __init__(self):
         self.queue=Queue()
-    def put(self,message, username=""):
-        self.queue.put((username,message))
+    def put(self,message,username="",userChanges=0):
+        self.queue.put((userChanges,username,message))
     def get(self):
         val = self.queue.get()
-        return val[0],val[1]
+        return val[0],val[1],val[2]
     def empty(self):
         return self.queue.empty()

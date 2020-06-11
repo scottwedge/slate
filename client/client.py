@@ -42,6 +42,9 @@ class Client:
 
         self.state=States.connecting
         self.username = getUsername()
+
+        self.otherUsers=[]
+
         self.gui = Gui(self.textSubmitted)
 
         self.threadJobs=["recieve"]
@@ -64,7 +67,12 @@ class Client:
             
             #waits until connection is established in attemptToConnect by textSubmitted callback
             while self.state == States.connecting:
-                self.gui.tkRoot.update()
+                try:
+                    self.gui.tkRoot.update()
+                except:
+                    #window was closed while awaiting connection input
+                    self.state=States.closing
+                    break
             
             if self.state == States.failedToConnect:
                 self.gui.addText("> Failed to Connect to That IP ")
@@ -79,6 +87,13 @@ class Client:
             if not sent:
                 sock.close()
                 self.state = States.failedToConnect
+
+            #gets other users in chatroom
+            _,userChanges,usernames,message=getPacket(sock)
+            usernames=usernames.strip().strip(',')
+
+            if usernames:#checks if list is empty
+                self.otherUsers.extend(usernames.split(','))
 
             self.sock = sock
             self.state = States.chatting
@@ -130,6 +145,9 @@ class Client:
                 while not self.printQueue.empty():
                     self.printQueue.push()
 
+                if self.gui.updateUserList:
+                    self.gui.updateUsers(self.otherUsers)
+
                 self.gui.tkRoot.update()
             except:
                 self.state = States.closing
@@ -140,12 +158,32 @@ class Client:
     def recievingLoop(self):
         while not self.state == States.closing:
             try:
-                eot,username,message = getPacket(self.sock)
+                eot,userChange,username,message = getPacket(self.sock)
+
                 # checks eot
                 if eot:
                     self.state = States.closing
-                else:
+                elif userChange == 0:
                     self.printQueue.put("message",message,username)
+
+                #packet contains data on users connecting or disconnecting
+                else:
+                    self.printQueue.put("text",message)
+                    usernames=username.split(",")
+                    #add users
+                    if userChange == 1:
+                        self.otherUsers.extend(usernames)
+                    #remove users
+                    else:
+                        for user in usernames:
+                            if user in self.otherUsers:
+                                self.otherUsers.remove(user)
+                            else:
+                                print("user not in list")
+                    #flag for main process to update gui element
+                    self.gui.updateUserList=True
+
+
             except:
                 if not self.state==States.closing:
                     self.printQueue.put("text","Server Disconnected")
