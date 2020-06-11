@@ -1,7 +1,7 @@
 import socket
 from time import sleep
 from enum import Enum
-from queue import Queue
+from queues import EventQueue
 
 from helpers import connect, sendPacket, getPacket, getUsername
 import threads
@@ -16,27 +16,6 @@ class States(Enum):
     chatting=3
     closing=4
 
-
-class PrintQueue:
-    def __init__(self,gui):
-        self.printTypes={}
-        self.printTypes["text"] = gui.addText
-        self.printTypes["message"] = gui.addMessage
-
-        self.queue=Queue()
-
-    #format type, message, optional username for message type printing
-    def put(self,printType,text,username=""):
-        self.queue.put((printType,text,username))
-
-    #submits next print job
-    def push(self):
-        printType,text,username = self.queue.get()
-        self.printTypes[printType](text,username)
-    
-    def empty(self):
-        return self.queue.empty()
-
 class Client:
     def __init__(self):
 
@@ -50,7 +29,7 @@ class Client:
         self.threadJobs=["recieve"]
         self.threads={}
 
-        self.printQueue = PrintQueue(self.gui)
+        self.eventQueue = EventQueue()
 
         self.connectToServ()
         threads.startThreads(self)
@@ -104,7 +83,8 @@ class Client:
     
     def disconnect(self):
         self.state = States.closing
-        self.printQueue.put("text","Disconnecting from Server")
+        text="Disconnecting from Server"
+        self.eventQueue.addEvent(self.gui.addText,(text,))
         sendPacket(self.sock,True,"")
         #waits for server to see leave message
         sleep(1)
@@ -114,7 +94,8 @@ class Client:
     def sendText(self,eot,text):
         sent = sendPacket(self.sock,eot,text)
         if not sent:
-            self.printQueue.put("text","Server Disconnected")
+            text="Server Disconnected"
+            self.eventQueue.addEvent(self.gui.addText,(text,))
             self.state=States.closing
 
 
@@ -142,11 +123,8 @@ class Client:
         while not self.state == States.closing:
             
             try:
-                while not self.printQueue.empty():
-                    self.printQueue.push()
-
-                if self.gui.updateUserList:
-                    self.gui.updateUsers(self.otherUsers)
+                while not self.eventQueue.empty():
+                    self.eventQueue.triggerEvent()
 
                 self.gui.tkRoot.update()
             except:
@@ -164,11 +142,12 @@ class Client:
                 if eot:
                     self.state = States.closing
                 elif userChange == 0:
-                    self.printQueue.put("message",message,username)
+
+                    self.eventQueue.addEvent(self.gui.addMessage,(message,username))
 
                 #packet contains data on users connecting or disconnecting
                 else:
-                    self.printQueue.put("text",message)
+                    self.eventQueue.addEvent(self.gui.addText,(message,))
                     usernames=username.split(",")
                     #add users
                     if userChange == 1:
@@ -180,13 +159,15 @@ class Client:
                                 self.otherUsers.remove(user)
                             else:
                                 print("user not in list")
-                    #flag for main process to update gui element
-                    self.gui.updateUserList=True
+                    
+                    #adds event to update users
+                    self.eventQueue.addEvent(self.gui.updateUsers,(self.otherUsers,))
 
 
             except:
                 if not self.state==States.closing:
-                    self.printQueue.put("text","Server Disconnected")
+                    text="Server Disconnected"
+                    self.eventQueue.addEvent(self.gui.addText,(text,))
                     self.state=States.closing
 
 

@@ -11,8 +11,6 @@ class Gui:
 
         self.lastMessanger=""
 
-        self.updateUserList=False
-
     def generateTkinterObjs(self,enterCallback):
         self.tkRoot.geometry(cfg.tkinterWinSize)
         self.tkRoot.option_add( "*font", cfg.tkinterFont)
