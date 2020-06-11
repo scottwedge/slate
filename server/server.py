@@ -19,6 +19,8 @@ class Server:
         self.messageQueue = MessageQueue()
 
         self.clients = []
+
+
         self.threads=[]
 
     def awaitConnections(self):
@@ -28,13 +30,36 @@ class Server:
 
             #gets username
             _,clientUsername = getPacket(clientSocket)
-
+            clientUsername=self.ensureUniqueUsername(clientUsername)
             self.clients.append(ClientData(clientSocket,addr,clientUsername,self.nextClientID))
             self.nextClientID+=1
 
             self.messageQueue.put(f"{clientUsername} Joined {self.roomName}")
 
-        
+    #if 2 users have the same username, one joining is given a suffix
+    def ensureUniqueUsername(self,username):
+        if username == "":
+            username = cfg.noNameReplacement
+
+        suffix=""
+        i=0
+
+        while i < len(self.clients):
+            print(i,len(self.clients))
+            clientName = self.clients[i].username
+            if username+str(suffix) == clientName:
+                if suffix=="":
+                    suffix=1
+                else:
+                    suffix+=1
+                
+                i=0
+            else:
+                i+=1
+
+        return username+str(suffix)
+
+
     def recieving(self):
         while self.running:
             for client in self.clients:

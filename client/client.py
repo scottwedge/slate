@@ -16,6 +16,27 @@ class States(Enum):
     chatting=3
     closing=4
 
+
+class PrintQueue:
+    def __init__(self,gui):
+        self.printTypes={}
+        self.printTypes["text"] = gui.addText
+        self.printTypes["message"] = gui.addMessage
+
+        self.queue=Queue()
+
+    #format type, message, optional username for message type printing
+    def put(self,printType,text,username=""):
+        self.queue.put((printType,text,username))
+
+    #submits next print job
+    def push(self):
+        printType,text,username = self.queue.get()
+        self.printTypes[printType](text,username)
+    
+    def empty(self):
+        return self.queue.empty()
+
 class Client:
     def __init__(self):
 
@@ -26,7 +47,7 @@ class Client:
         self.threadJobs=["recieve"]
         self.threads={}
 
-        self.printQueue = Queue()
+        self.printQueue = PrintQueue(self.gui)
 
         self.connectToServ()
         threads.startThreads(self)
@@ -68,7 +89,7 @@ class Client:
     
     def disconnect(self):
         self.state = States.closing
-        self.printQueue.put("Disconnecting from Server")
+        self.printQueue.put("text","Disconnecting from Server")
         sendPacket(self.sock,True,"")
         #waits for server to see leave message
         sleep(1)
@@ -78,7 +99,7 @@ class Client:
     def sendText(self,eot,text):
         sent = sendPacket(self.sock,eot,text)
         if not sent:
-            self.printQueue.put("Server Disconnected")
+            self.printQueue.put("text","Server Disconnected")
             self.state=States.closing
 
 
@@ -107,9 +128,7 @@ class Client:
             
             try:
                 while not self.printQueue.empty():
-                    message = self.printQueue.get()
-                    self.gui.addText(message)
-
+                    self.printQueue.push()
 
                 self.gui.tkRoot.update()
             except:
@@ -126,10 +145,10 @@ class Client:
                 if eot:
                     self.state = States.closing
                 else:
-                    self.printQueue.put(f"{username}> {message}")
+                    self.printQueue.put("message",message,username)
             except:
                 if not self.state==States.closing:
-                    self.printQueue.put("Server Disconnected")
+                    self.printQueue.put("text","Server Disconnected")
                     self.state=States.closing
 
 

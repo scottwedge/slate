@@ -7,7 +7,8 @@ class Gui:
         self.tkRoot = tk.Tk()
         self.generateTkinterObjs(enterCallback)
         self.makeLayout()
-        print("asdf")
+
+        self.lastMessanger=""
 
     def generateTkinterObjs(self,enterCallback):
         self.tkRoot.geometry(cfg.tkinterWinSize)
@@ -23,7 +24,7 @@ class Gui:
 
         textVar=tk.StringVar(window)
         textInput=tk.Entry(window,textvariable=textVar)
-        textInput.configure(background= cfg.grey,foreground="white",highlightthickness=0,borderwidth=cfg.textInputPad,relief=tk.FLAT)
+        textInput.configure(background= cfg.grey,foreground="white",borderwidth=cfg.textInputPad,relief=tk.FLAT)
         #binds return key to sumbit text
         textInput.bind("<Return>", lambda event: enterCallback(textVar) )
 
@@ -47,7 +48,22 @@ class Gui:
         self.window.rowconfigure(0,weight=1)
         self.window.columnconfigure(0,weight=1)
     
-    def addText(self,text):
-        self.messages.insert(tk.END,"\n"+text)
+    #formats based on whos speaking
+    def addMessage(self,message,username):
+        if username == self.lastMessanger:
+            self.messages.insert(tk.END,"\n"+message)
+        
+        else:
+            self.lastMessanger = username
+            self.messages.insert(tk.END,f"\n\n{username}> {message}")
+        
+        self.messages.see(tk.END)
+
+
+    #username is simply for api compatibility
+    def addText(self,text,username=""):
+        self.lastMessanger=username
+        self.messages.insert(tk.END,"\n\n"+text+"\n")
 
         self.messages.see(tk.END)
+
