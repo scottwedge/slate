@@ -7,3 +7,8 @@ def startThreads(client):
     retrieveTread.daemon = True
     retrieveTread.start()
     client.threads[jobs[0]] = retrieveTread
+
+    transmitTread = threading.Thread(target = client.transmit)
+    transmitTread.daemon = True
+    transmitTread.start()
+    client.threads[jobs[1]] = transmitTread

@@ -1,8 +1,8 @@
 import socket
 
-from packets.packets import PType,getPacket,sendPacket,getClientDataDict
+from packets.packets import PType,getPacket,sendPacket,makeClientDataDict,SendQueue
 from server.helpers import startServer, getRoomName
-from server.structures import ClientData,SendQueue
+from server.structures import ClientData
 import server.threads as threads
 import server.config as cfg
 
@@ -26,7 +26,7 @@ class Server:
 
     def getClientById(self,clientId):
         for client in self.clients:
-            if client.id==clientId:
+            if client.dict["id"]==clientId:
                 return client
         
         return None
@@ -35,16 +35,17 @@ class Server:
         while self.running:
             try:
                 clientSocket, addr = self.s.accept()
+
                 #gets userdata
                 _,data = getPacket(clientSocket,cfg.bufferSize)
                 data = data[0]
+
                 clientUsername = data["username"]
                 clientUsername=self.ensureUniqueUsername(clientUsername)
             except:
                 continue
-            
             #sends userID
-            clientDataDict = getClientDataDict(self.nextClientID, clientUsername)
+            clientDataDict = makeClientDataDict(self.nextClientID, clientUsername)
             sendPacket(clientSocket,PType.clientData,(clientDataDict,))
 
             #sends active users
@@ -57,7 +58,7 @@ class Server:
             
             newClient = ClientData(clientSocket,addr,clientUsername,self.nextClientID)
             self.clients.append(newClient)
-            self.toSend.addClientData(newClient)
+            self.toSend.addClientData(newClient.dict)
 
             message=f"{clientUsername} Joined {self.roomName}"
             self.toSend.addMessage(message)
@@ -73,7 +74,7 @@ class Server:
         i=0
 
         while i < len(self.clients):
-            clientName = self.clients[i].username
+            clientName = self.clients[i].dict["username"]
             if username+str(suffix) == clientName:
                 if suffix=="":
                     suffix=1
@@ -93,7 +94,7 @@ class Server:
 
         elif pType == PType.message:
             messangerID, message = data
-            username = client.username
+            username = client.dict["username"]
             self.toSend.addMessage(message, messangerID,username)
 
         elif pType == PType.clientData:
@@ -137,8 +138,8 @@ class Server:
 
 
     def dropClient(self,client):
-        username=client.username
-        clientId = client.id
+        username=client.dict["username"]
+        clientId = client.dict["id"]
         self.toSend.addClientDisconnect(clientId,username)
         self.clients.remove(client)
         

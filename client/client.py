@@ -3,7 +3,7 @@ from time import sleep
 from enum import Enum
 
 from client.queues import EventQueue
-from packets.packets import PType, sendPacket, getPacket,getClientDataDict
+from packets.packets import PType, sendPacket, getPacket,makeClientDataDict, SendQueue
 from client.helpers import connect, getUsername
 import client.threads as threads
 import client.config as cfg
@@ -21,21 +21,22 @@ class Client:
     def __init__(self):
 
         self.state=States.connecting
-        self.username = getUsername()
 
-        #given by server
-        self.userID=0
+        #uid will be overrided by server
+        self.dict=makeClientDataDict(0,getUsername())
 
         self.otherUsers=[]
+
         #sorted by id number
         self.clientsDict = {}
 
         self.gui = Gui(self.textSubmitted)
 
-        self.threadJobs=["recieve"]
+        self.threadJobs=["recieve","transmit"]
         self.threads={}
 
         self.eventQueue = EventQueue()
+        self.toSend = SendQueue()
 
         self.promptToConnect()
         threads.startThreads(self)
@@ -70,19 +71,20 @@ class Client:
         except:
             self.state = States.failedToConnect
             return
-        
+
         #sends clientData
-        dataDict = getClientDataDict(0,self.username)
-        sent = sendPacket(sock,PType.clientData,(dataDict,))
+        sent = sendPacket(sock,PType.clientData,(self.dict,))
         if not sent:
             sock.close()
             self.state = States.failedToConnect
 
+
         #gets own user data (for id)
         packet = getPacket(sock,cfg.bufferSize)
+
         _,clientData = packet
         clientData=clientData[0] #remember clientData is sent in recieved in tup
-        self.id = clientData["id"]
+        self.dict["id"] = clientData["id"]
 
         #gets other users in chatroom
         pType,data = getPacket(sock,cfg.bufferSize)
@@ -131,7 +133,8 @@ class Client:
         text="Disconnecting from Server"
         self.eventQueue.addEvent(self.gui.addText,(text,))
         
-        sendPacket(self.sock,PType.eot,"")
+        self.toSend.addEot()
+
         #waits for server to see leave message
         sleep(1)
         self.sock.close()
@@ -152,8 +155,15 @@ class Client:
             self.attemptToConnect(text)
 
         else:
-            sendPacket(self.sock,PType.message,(self.id,text))
+            self.toSend.addMessage(text,self.dict["id"])
 
+    #run by transmit thread
+    def transmit(self):
+        while not self.state == States.closing:
+            while not self.toSend.empty():
+                packet,console = self.toSend.get()
+                pType,data = packet
+                sendPacket(self.sock,pType,data)
 
     #run by main thread
     def guiLoop(self):
