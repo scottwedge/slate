@@ -1,8 +1,9 @@
 import socket
 from time import sleep
-import config as cfg
 import marshal
 from urllib.request import urlopen
+
+import server.config as cfg
 
 def getRoomName():
     try:

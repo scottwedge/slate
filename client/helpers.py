@@ -1,6 +1,6 @@
 import socket
-import config as cfg
-import marshal
+import client.config as cfg
+
 def getUsername():
     try:
         file = open("username.txt", 'r')
@@ -30,18 +30,3 @@ def connect(ip):
     sock.connect((ip, cfg.port))
     sock.settimeout(cfg.waitTime)
     return sock
-
-def sendPacket(sock, eot, message):
-    try:
-        packet = marshal.dumps((eot,bytes(message,cfg.encoding)))
-        sock.send(packet)
-        return True
-    except:
-        return False
-
-def getPacket(sock):
-    packet = sock.recv(cfg.bufferSize)
-    eot,userChange,username,text = marshal.loads(packet)
-    username = username.decode(cfg.encoding)
-    text = text.decode(cfg.encoding)
-    return eot,userChange,username,text

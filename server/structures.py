@@ -1,6 +1,8 @@
 import threading
 from queue import Queue
+import json
 
+from packets.packets import getClientDataDict,PType
 #holds client data and thread locks
 class ClientData:
     def __init__(self,sock,address,username,Id):
@@ -10,6 +12,7 @@ class ClientData:
         self.username = username
         self.id = Id
         self.sock=sock
+
         self.lock.release()
 
     def remove(self,clientList):
@@ -18,14 +21,39 @@ class ClientData:
         self.sock.close()
         self.lock.release()
     
+    def packageData(self):
+        self.lock.acquire()
 
-class MessageQueue:
+        clientDict = getClientDataDict(self.id,self.username)
+
+        self.lock.release()
+
+        return clientDict
+
+
+class SendQueue:
     def __init__(self):
-        self.queue=Queue()
-    def put(self,message,username="",userChanges=0):
-        self.queue.put((userChanges,username,message))
+        self.packet = Queue()
+        self.console = Queue()
+    
+    def addMessage(self,message,clientId=-1,username=""):
+        self.packet.put((PType.message,(clientId,message)))
+        self.console.put(f"{username}> {message}")
+
+    def addClientData(self,client):
+        self.packet.put((PType.clientData,(client.packageData(),)))
+        self.console.put(f"Sending {client.username}'s Data")
+    
+    def addClientDisconnect(self,clientId,username):
+        self.packet.put((PType.clientDisconnect,clientId))
+        self.console.put(f"{username} Disconnected")
+
+    def addGeneric(self,pType,data):
+        self.packet.put((pType,data))
+        self.console.put(f"Sending {pType}")
+
+    
     def get(self):
-        val = self.queue.get()
-        return val[0],val[1],val[2]
+        return self.packet.get(),self.console.get()
     def empty(self):
-        return self.queue.empty()
+        return self.packet.empty()

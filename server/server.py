@@ -1,10 +1,10 @@
 import socket
-from time import sleep
 
-from helpers import startServer, sendPacket, getPacket, getRoomName
-from structures import ClientData,MessageQueue
-import threads 
-import config as cfg
+from packets.packets import PType,getPacket,sendPacket,getClientDataDict
+from server.helpers import startServer, getRoomName
+from server.structures import ClientData,SendQueue
+import server.threads as threads
+import server.config as cfg
 
 
 class Server:
@@ -16,36 +16,53 @@ class Server:
         self.s = startServer()
 
 
-        self.messageQueue = MessageQueue()
+        self.toSend = SendQueue()
 
         self.clients = []
 
-
         self.threads=[]
+
+        threads.startThreads(self)
+
+    def getClientById(self,clientId):
+        for client in self.clients:
+            if client.id==clientId:
+                return client
+        
+        return None
 
     def awaitConnections(self):
         while self.running:
             try:
                 clientSocket, addr = self.s.accept()
-
-                #gets username
-                _,clientUsername = getPacket(clientSocket)
+                #gets userdata
+                _,data = getPacket(clientSocket,cfg.bufferSize)
+                data = data[0]
+                clientUsername = data["username"]
+                clientUsername=self.ensureUniqueUsername(clientUsername)
             except:
                 continue
+            
+            #sends userID
+            clientDataDict = getClientDataDict(self.nextClientID, clientUsername)
+            sendPacket(clientSocket,PType.clientData,(clientDataDict,))
 
-
-            #sends active usernames
-            usernames=""
+            #sends active users
+            clientDicts=[]
             for client in self.clients:
-                usernames+=f"{client.username},"
-            sendPacket(clientSocket,False,1,usernames,"")
+                clientDicts.append(client.packageData())
+            sendPacket(clientSocket,PType.clientData,tuple(clientDicts))
             
             clientSocket.settimeout(cfg.waitTime)
-            clientUsername=self.ensureUniqueUsername(clientUsername)
-            self.clients.append(ClientData(clientSocket,addr,clientUsername,self.nextClientID))
-            self.nextClientID+=1
+            
+            newClient = ClientData(clientSocket,addr,clientUsername,self.nextClientID)
+            self.clients.append(newClient)
+            self.toSend.addClientData(newClient)
 
-            self.messageQueue.put(f"{clientUsername} Joined {self.roomName}",clientUsername,1)
+            message=f"{clientUsername} Joined {self.roomName}"
+            self.toSend.addMessage(message)
+
+            self.nextClientID+=1
 
     #if 2 users have the same username, one joining is given a suffix
     def ensureUniqueUsername(self,username):
@@ -69,33 +86,48 @@ class Server:
 
         return username+str(suffix)
 
+    #client index is for eot transmission so this method knows who disconnected
+    def packetSwitch(self,pType,data,client=None):
+        if pType == PType.eot:
+            self.dropClient(client)
+
+        elif pType == PType.message:
+            messangerID, message = data
+            username = client.username
+            self.toSend.addMessage(message, messangerID,username)
+
+        elif pType == PType.clientData:
+            print("ClientData Recieved Unexpectedly")
+
+        elif pType == PType.clientDisconnect:
+            print("ClientDisconnect Packet Intended for Server to Client Only")
+        
+        elif pType == PType.ping:
+            pass
+        
+        else:
+            print("Recieved Invalid Packet Type")
 
     def recieving(self):
         while self.running:
             for client in self.clients:
                 try:
-                    client.lock.acquire()
-                    eot,message = getPacket(client.sock)
-                    #client disconnecting
-                    if eot:
-                        client.lock.release()
-                        self.dropClient(client)
-                        continue
-                    
-                    self.messageQueue.put(message, client.username)
-                    client.lock.relase()
+                    pType,data = getPacket(client.sock,cfg.bufferSize)
+                    self.packetSwitch(pType,data,client)
                 except:
-                    client.lock.release()
+                    continue
+
 
     def relay(self):
         while self.running:
-            if not self.messageQueue.empty():
-                userChanges,username,message = self.messageQueue.get()
-                print(f"{username}> {message}")
+            if not self.toSend.empty():
+                packet,consoleMessage = self.toSend.get()
+                pType,data = packet
+                print(consoleMessage)
                 for client in self.clients:
                     try:
                         client.lock.acquire()
-                        sendPacket(client.sock,False,userChanges,username,message)
+                        sendPacket(client.sock,pType,data)
                         client.lock.release()
                     
                     #client not recieving packets
@@ -106,7 +138,8 @@ class Server:
 
     def dropClient(self,client):
         username=client.username
-        self.messageQueue.put(f"{username} Disconnected", username, 2)
+        clientId = client.id
+        self.toSend.addClientDisconnect(clientId,username)
         self.clients.remove(client)
         
 
@@ -115,16 +148,8 @@ class Server:
         for client in self.clients:
             try:
                 client.lock.acquire()
-                sendPacket(client.sock,True,0,"",f"{self.roomName} has Closed")
+                sendPacket(client.sock,PType.message,(-1,f"{self.roomName} has Closed"))
                 client.lock.release()
                 client.remove(self.clients)
             except:
                 client.lock.release()
-
-if __name__ == "__main__":
-    serv=Server()
-    threads.startThreads(serv)
-    while serv.running:
-        sleep(10)
-
-    serv.disconnectAll()

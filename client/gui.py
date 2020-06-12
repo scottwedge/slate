@@ -1,6 +1,6 @@
 import tkinter as tk
 import tkinter.scrolledtext as scrolledtext
-import config as cfg
+import client.config as cfg
 
 class Gui:
     def __init__(self,enterCallback):
@@ -29,8 +29,8 @@ class Gui:
         #binds return key to sumbit text
         textInput.bind("<Return>", lambda event: enterCallback(textVar) )
 
-        usersActive=tk.Text(window)
-        usersActive.configure(background=cfg.softBlack, foreground = "white",borderwidth=0,padx=10,pady=5)
+        clientsPanel=tk.Text(window)
+        clientsPanel.configure(background=cfg.softBlack, foreground = "white",borderwidth=0,padx=10,pady=5)
         #to become submit button
         #generateButton=tk.Button(window,text="Generate",command=lambda: eventHand.generateButton(app,cfg,plotter,getTuningList(tuningStrVar),root.get(),scale.get()))
         #generateButton.configure(background= 'red',activebackground='#404040')
@@ -39,14 +39,14 @@ class Gui:
         self.window=window
         self.messages=messages
         self.textInput = textInput
-        self.usersActive=usersActive
+        self.clientsPanel=clientsPanel
     
     def makeLayout(self):
 
         self.messages.grid(row=0,sticky = tk.NSEW)
 
         self.textInput.grid(row=1,sticky = 'sew')
-        self.usersActive.grid(row=0, column=1,sticky='nes',rowspan=2)
+        self.clientsPanel.grid(row=0, column=1,sticky='nes',rowspan=2)
 
         self.window.rowconfigure(0,weight=2)
         #self.window.rowconfigure(1,weight=1)
@@ -73,8 +73,9 @@ class Gui:
         self.messages.see(tk.END)
 
 
-    def updateUsers(self,users):
-        self.updateUserList=False
-        self.usersActive.delete(1.0,tk.END)
-        for user in users:
-            self.usersActive.insert(tk.END,user+"\n")
+    def updateClientsPanel(self,clientsDict):
+        self.clientsPanel.delete(1.0,tk.END)
+        
+        for client in clientsDict.values():
+            username = client["username"]
+            self.clientsPanel.insert(tk.END,username+"\n")

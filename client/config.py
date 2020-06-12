@@ -9,8 +9,6 @@ waitTime=None
 
 typeHotkey='shift'
 
-closePhrase='EXIT'
-
 #frontend
 windowName="Slate"
 tkinterWinSize="750x400"
