@@ -25,18 +25,22 @@ class Server:
 
     def awaitConnections(self):
         while self.running:
-            clientSocket, addr = self.s.accept()
-            clientSocket.settimeout(cfg.waitTime)
+            try:
+                clientSocket, addr = self.s.accept()
 
-            #gets username
-            _,clientUsername = getPacket(clientSocket)
+                #gets username
+                _,clientUsername = getPacket(clientSocket)
+            except:
+                continue
+
 
             #sends active usernames
             usernames=""
             for client in self.clients:
                 usernames+=f"{client.username},"
             sendPacket(clientSocket,False,1,usernames,"")
-
+            
+            clientSocket.settimeout(cfg.waitTime)
             clientUsername=self.ensureUniqueUsername(clientUsername)
             self.clients.append(ClientData(clientSocket,addr,clientUsername,self.nextClientID))
             self.nextClientID+=1

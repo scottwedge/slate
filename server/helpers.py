@@ -2,6 +2,7 @@ import socket
 from time import sleep
 import config as cfg
 import marshal
+from urllib.request import urlopen
 
 def getRoomName():
     try:
@@ -29,9 +30,12 @@ def startServer():
     while True:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            ip = socket.gethostbyname(socket.gethostname())
-            s.bind((ip, cfg.port))
-            print(f"Server Started with IP: {ip}, and port: {cfg.port}")
+
+            externalIp = urlopen('https://api.ipify.org').read().decode('utf8')
+            internalIp = socket.gethostbyname(socket.gethostname())
+
+            s.bind(("", cfg.port))
+            print(f"Server Started with external IP: {externalIp}, internal IP {internalIp}, and port: {cfg.port}")
             s.listen(cfg.queueLen)
             return s
         except:

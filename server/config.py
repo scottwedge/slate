@@ -6,6 +6,6 @@ encoding="utf-8"
 
 queueLen=5
 
-waitTime=0.001
+waitTime=0
 
 noNameReplacement="noName"
