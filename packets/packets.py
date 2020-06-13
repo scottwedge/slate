@@ -26,8 +26,8 @@ def getPacket(sock,bufferSize):
     return pType,data
 
 # enforces formatting
-def makeClientDataDict(clientId,username):
-    return {"id":clientId, "username":username}
+def makeClientDataDict(clientId,username,color):
+    return {"id":clientId, "username":username, "color":color}
 
 
 class SendQueue:

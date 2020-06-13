@@ -1,6 +1,6 @@
 import socket
 
-from packets.packets import PType,getPacket,sendPacket,makeClientDataDict,SendQueue
+from packets.packets import PType,getPacket,sendPacket,SendQueue
 from server.helpers import startServer, getRoomName
 from server.structures import ClientData
 import server.threads as threads
@@ -38,14 +38,15 @@ class Server:
 
                 #gets userdata
                 _,data = getPacket(clientSocket,cfg.bufferSize)
-                data = data[0]
+                clientDataDict = data[0]
 
-                clientUsername = data["username"]
+                clientUsername = clientDataDict["username"]
                 clientUsername=self.ensureUniqueUsername(clientUsername)
             except:
                 continue
-            #sends userID
-            clientDataDict = makeClientDataDict(self.nextClientID, clientUsername)
+            #updates client data dict with proper user id
+            clientDataDict["id"]=self.nextClientID
+            clientDataDict["username"]=clientUsername
             sendPacket(clientSocket,PType.clientData,(clientDataDict,))
 
             #sends active users
@@ -56,11 +57,12 @@ class Server:
             
             clientSocket.settimeout(cfg.waitTime)
             
-            newClient = ClientData(clientSocket,addr,clientUsername,self.nextClientID)
+            newClient = ClientData(clientSocket,addr,clientDataDict)
             self.clients.append(newClient)
+            print(clientDataDict)
             self.toSend.addClientData(newClient.dict)
 
-            message=f"{clientUsername} Joined {self.roomName}"
+            message=f"> {clientUsername} Joined {self.roomName}"
             self.toSend.addMessage(message)
 
             self.nextClientID+=1

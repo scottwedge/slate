@@ -7,13 +7,13 @@ from packets.packets import makeClientDataDict,PType
 
 #holds client data and thread locks
 class ClientData:
-    def __init__(self,sock,address,username,Id):
+    def __init__(self,sock,address,clientDict):
         self.lock=threading.Lock()
 
         self.lock.acquire()
         self.sock=sock
 
-        self.dict = makeClientDataDict(Id,username)
+        self.dict = clientDict
         self.lock.release()
 
     def remove(self,clientList):
