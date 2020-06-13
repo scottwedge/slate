@@ -9,9 +9,10 @@ waitTime=None
 
 typeHotkey='shift'
 
-userJsonPath = "user.json"
+userJsonPath = "client/user.json"
 
 #frontend
+windowIconPath = "client/icon.png"
 windowName="Slate"
 tkinterWinSize="750x400"
 tkinterFont="verdana 11"

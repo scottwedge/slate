@@ -5,6 +5,8 @@ import client.config as cfg
 class Gui:
     def __init__(self,enterCallback,closeCallback):
         self.tkRoot = tk.Tk()
+        self.tkRoot.iconphoto(False,tk.PhotoImage(file = cfg.windowIconPath))
+
         self.tkRoot.title(cfg.windowName)
         self.generateTkinterObjs()
         self.makeLayout()
@@ -46,6 +48,7 @@ class Gui:
             clientsPanel.tag_config(color, foreground=color)
     
         self.window=window
+        self.window.bind()
         self.messages=messages
         self.textInput = textInput
         self.clientsPanel=clientsPanel
@@ -78,6 +81,8 @@ class Gui:
         
         self.messages.see(tk.END)
 
+        self.textInput.focus_force()
+
 
     #username is simply for api compatibility
     def addText(self,text,color=cfg.defaultTextColor):
@@ -85,6 +90,9 @@ class Gui:
         self.messages.insert(tk.END,f"\n{text}\n", color)
 
         self.messages.see(tk.END)
+        
+        self.textInput.focus_force()
+        
 
 
     def updateClientsPanel(self,clientsDict,lock):

@@ -1,5 +1,5 @@
 roomName.txt
-user.json
+client/user.json
 server/__pycache__
 packets/__pycache__
 client/__pycache__

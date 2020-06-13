@@ -30,6 +30,27 @@ class Client:
         self.connect()
         threads.startThreads(self)
     
+    def reset(self):
+        try:# catch for reset before connection
+            self.disconnect()
+        except:
+            pass
+        
+        #waits for all threads to stop running
+        self.running = False
+        for job in self.threadJobs:
+            if job in self.threads.keys():
+                self.threads[job].join()
+
+        self.clientsDict.clear()
+        self.threads.clear()
+        self.eventQueue.clear()
+        self.toSend.clear()
+
+        self.running = True
+        self.connect()
+        threads.startThreads(self)
+
     def connect(self):
         while True:
             ip = self.gui.prompt("> What IP Would You Like to Connect to? ")
@@ -62,6 +83,31 @@ class Client:
             self.sock = sock
             break
     
+    def disconnect(self):
+        text="Disconnecting from Server"
+        self.eventQueue.addEvent(self.gui.addText,(text,))
+        
+        sendPacket(self.sock,PType.eot,"")
+
+        #waits for server to see leave message
+        sleep(1)
+
+        self.sock.close()
+    
+    def close(self):
+        try:# catch for closure before connection
+            self.disconnect()
+        except:
+            pass
+        
+        #waits for all threads to stop running
+        self.running = False
+        for job in self.threadJobs:
+            if job in self.threads.keys():
+                self.threads[job].join()
+
+        sys.exit()
+
     def packetSwitch(self,pType,data):
         if pType == PType.eot:
             self.eventQueue.addEvent(self.close,())
@@ -106,35 +152,11 @@ class Client:
             print("Recieved Invalid Packet Type")
 
 
-    def disconnect(self):
-        text="Disconnecting from Server"
-        self.eventQueue.addEvent(self.gui.addText,(text,))
-        
-        sendPacket(self.sock,PType.eot,"")
-
-        #waits for server to see leave message
-        sleep(1)
-
-        self.sock.close()
-    
-    def close(self):
-        try:# catch for closure before connection
-            self.disconnect()
-        except:
-            pass
-        
-        #waits for all threads to stop running
-        self.running = False
-        for job in self.threadJobs:
-            if job in self.threads.keys():
-                self.threads[job].join()
-
-        sys.exit()
-
     def serverDisconnected(self):
         text="Server Disconnected"
         self.eventQueue.addEvent(self.gui.addText,(text,))
-        self.eventQueue.addEvent(self.close,())
+        self.eventQueue.addEvent(self.reset,())
+
 
     #callback when enter is hit in text field
     def textSubmitted(self,text):
@@ -160,6 +182,7 @@ class Client:
                 dropped+=1
                 if dropped > 5:
                     self.serverDisconnected()
+                    break
 
     #run by main thread
     def mainLoop(self):

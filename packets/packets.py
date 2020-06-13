@@ -66,3 +66,7 @@ class SendQueue:
 
     def empty(self):
         return self.packet.empty()
+    
+    def clear(self):
+        while not self.empty():
+            _,_ = self.get()

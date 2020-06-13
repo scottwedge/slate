@@ -18,3 +18,7 @@ class EventQueue:
     
     def empty(self):
         return self.queue.empty()
+    
+    def clear(self):
+        while not self.empty():
+            _ = self.queue.get()
