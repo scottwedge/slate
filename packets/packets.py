@@ -10,6 +10,7 @@ class PType(Enum):
     clientDisconnect=auto()       #id of client disconnected
     ping=auto()                   #data is empty
 
+
 def sendPacket(sock,pType,data):
     packet=pickle.dumps((pType,data))
     try:
@@ -21,7 +22,9 @@ def sendPacket(sock,pType,data):
 
 def getPacket(sock,bufferSize):
     packet = sock.recv(bufferSize)
+
     pType,data = pickle.loads(packet)
+
 
     return pType,data
 

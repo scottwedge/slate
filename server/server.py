@@ -59,7 +59,7 @@ class Server:
             
             newClient = ClientData(clientSocket,addr,clientDataDict)
             self.clients.append(newClient)
-            print(clientDataDict)
+
             self.toSend.addClientData(newClient.dict)
 
             message=f"> {clientUsername} Joined {self.roomName}"
@@ -128,6 +128,7 @@ class Server:
                 pType,data = packet
                 print(consoleMessage)
                 for client in self.clients:
+                    username = client.dict["username"]
                     try:
                         client.lock.acquire()
                         sendPacket(client.sock,pType,data)
@@ -142,8 +143,9 @@ class Server:
     def dropClient(self,client):
         username=client.dict["username"]
         clientId = client.dict["id"]
-        self.toSend.addClientDisconnect(clientId,username)
         self.clients.remove(client)
+        self.toSend.addClientDisconnect(clientId,username)
+
         
 
     def disconnectAll(self):

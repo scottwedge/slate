@@ -3,7 +3,7 @@ import tkinter.scrolledtext as scrolledtext
 import client.config as cfg
 
 class Gui:
-    def __init__(self,enterCallback):
+    def __init__(self,enterCallback,closeCallback):
         self.tkRoot = tk.Tk()
         self.tkRoot.title(cfg.windowName)
         self.generateTkinterObjs()
@@ -14,6 +14,9 @@ class Gui:
         self.promptReturn=""
         #called in textSubmitted
         self.sendToClient = enterCallback
+
+        #used for closing the client if x is hit
+        self.closeClient = closeCallback
 
     def generateTkinterObjs(self):
         self.tkRoot.geometry(cfg.tkinterWinSize)
@@ -84,13 +87,16 @@ class Gui:
         self.messages.see(tk.END)
 
 
-    def updateClientsPanel(self,clientsDict):
+    def updateClientsPanel(self,clientsDict,lock):
         self.clientsPanel.delete(1.0,tk.END)
-        
-        for client in clientsDict.values():
+        lock.acquire()
+        clients = clientsDict.values()
+        for client in clients:
             username = client["username"]
             color = client["color"]
             self.clientsPanel.insert(tk.END,username+"\n", color)
+        
+        lock.release()
 
     def textEntered(self,strVar):
         text=strVar.get()
@@ -110,9 +116,14 @@ class Gui:
     def prompt(self,text,color=cfg.defaultTextColor):
         self.addText(text,color)
         self.prompting = True
-
+        
+        #made true if application was closed during prompt
         while self.prompting:
-            self.tkRoot.update()
+            try:
+                self.tkRoot.update()
+            except:
+                self.prompting=False
+                self.closeClient()
         
         #textEntered has placed the input into self.promptReturn
         return self.promptReturn

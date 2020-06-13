@@ -1,28 +1,25 @@
 import socket
 from time import sleep
 from enum import Enum,auto
-import json
+import sys
+import threading
 
 from client.queues import EventQueue
-from packets.packets import PType, sendPacket, getPacket,makeClientDataDict, SendQueue
-from client.helpers import connect, getUsername
+from packets.packets import PType, sendPacket, getPacket, SendQueue
+from client.helpers import connect, getSaved
 import client.threads as threads
 import client.config as cfg
 from client.gui import Gui
 
-
-class States(Enum):
-    connecting=auto()
-    chatting=auto()
-    closing=auto()
-
 class Client:
     def __init__(self):
-        self.gui = Gui(self.textSubmitted)
-        self.getSaved()
+        self.running = True
+        self.gui = Gui(self.textSubmitted,self.close)
+        self.dict = getSaved(self.gui)
 
         #sorted by id number
         self.clientsDict = {}
+        self.dictLock = threading.Lock()
 
         self.threadJobs=["recieve","transmit"]
         self.threads={}
@@ -32,44 +29,15 @@ class Client:
 
         self.connect()
         threads.startThreads(self)
-
-    def getSaved(self):
-        try:
-            file = open("user.json", 'r')
-            self.dict = json.load(file)
-
-        except:
-            file = open("user.json", 'w')
-            username = self.gui.prompt("Whats Your Name?")
-
-
-            for i,color in enumerate(cfg.colors):
-                self.gui.addText(f"{i}: {color}",color)
-            
-            #loops until valid input
-            colorIndex = -1
-            while not (colorIndex in range(0,len(cfg.colors))):
-                colorIndex = self.gui.prompt("Whats Your Color (Enter Number)")
-                try:
-                    colorIndex = int(colorIndex)
-                except:
-                    continue
-            
-            color = cfg.colors[colorIndex]
-
-            self.dict = makeClientDataDict(0,username,color)
-            json.dump(self.dict,file)
     
     def connect(self):
-        self.state=States.connecting
-        while self.state == States.connecting:
+        while True:
             ip = self.gui.prompt("> What IP Would You Like to Connect to? ")
-            ip = ip.strip()
             try:
                 sock = connect(ip)
             except:
                 self.gui.addText("> Failed To Connect To That IP")
-                return
+                continue
 
             #sends clientData
             sent = sendPacket(sock,PType.clientData,(self.dict,))
@@ -92,34 +60,43 @@ class Client:
             self.packetSwitch(pType,data)
 
             self.sock = sock
-            self.state = States.chatting
+            break
     
     def packetSwitch(self,pType,data):
-
         if pType == PType.eot:
-            self.state=States.closing
+            self.eventQueue.addEvent(self.close,())
 
         elif pType == PType.message:
             userId,message=data
             if userId !=-1:
+
+                self.dictLock.acquire()
                 clientDict=self.clientsDict[userId]
+                self.dictLock.release()
+
                 self.eventQueue.addEvent(self.gui.addMessage,(message,clientDict))
             else:
                 self.eventQueue.addEvent(self.gui.addText,(message,))
 
         elif pType == PType.clientData:
+
+            self.dictLock.acquire()
             for clientData in data:
                 self.clientsDict[clientData["id"]] = clientData
-                self.eventQueue.addEvent(self.gui.updateClientsPanel,(self.clientsDict,))
+            self.dictLock.release()
 
-
+            self.eventQueue.addEvent(self.gui.updateClientsPanel,(self.clientsDict,self.dictLock))
 
         elif pType == PType.clientDisconnect:
+
+            self.dictLock.acquire()
             username = self.clientsDict[data]["username"]
             self.clientsDict.pop(data,None)
+            self.dictLock.release()
+
             text = f"> {username} Disconnected"
             self.eventQueue.addEvent(self.gui.addText, (text,))
-            self.eventQueue.addEvent(self.gui.updateClientsPanel,(self.clientsDict,))
+            self.eventQueue.addEvent(self.gui.updateClientsPanel,(self.clientsDict,self.dictLock))
 
         
         elif pType == PType.ping:
@@ -130,7 +107,6 @@ class Client:
 
 
     def disconnect(self):
-        self.state = States.closing
         text="Disconnecting from Server"
         self.eventQueue.addEvent(self.gui.addText,(text,))
         
@@ -140,47 +116,59 @@ class Client:
         sleep(1)
 
         self.sock.close()
+    
+    def close(self):
+        try:# catch for closure before connection
+            self.disconnect()
+        except:
+            pass
+        
+        #waits for all threads to stop running
+        self.running = False
+        for job in self.threadJobs:
+            if job in self.threads.keys():
+                self.threads[job].join()
+
+        sys.exit()
 
     def serverDisconnected(self):
-        if not self.state==States.closing:
-            text="Server Disconnected"
-            self.eventQueue.addEvent(self.gui.addText,(text,))
-            self.state=States.closing
+        text="Server Disconnected"
+        self.eventQueue.addEvent(self.gui.addText,(text,))
+        self.eventQueue.addEvent(self.close,())
 
     #callback when enter is hit in text field
     def textSubmitted(self,text):
-        if self.state == States.chatting:
-            self.toSend.addMessage(text,self.dict["id"])
+        self.toSend.addMessage(text,self.dict["id"])
 
     #run by transmit thread
     def transmit(self):
-        while not self.state == States.closing:
+        while self.running:
             while not self.toSend.empty():
                 packet,console = self.toSend.get()
                 pType,data = packet
                 sendPacket(self.sock,pType,data)
+        
+    #run by thread
+    def recievingLoop(self):
+        dropped = 0
+        while self.running:
+            try:
+                pType,data = getPacket(self.sock,cfg.bufferSize)
+                self.packetSwitch(pType,data)
+                dropped = 0
+            except:
+                dropped+=1
+                if dropped > 5:
+                    self.serverDisconnected()
 
     #run by main thread
-    def guiLoop(self):
-        while not self.state == States.closing:
-            
+    def mainLoop(self):
+        while self.running:
             try:
                 while not self.eventQueue.empty():
                     self.eventQueue.triggerEvent()
 
                 self.gui.tkRoot.update()
             except:
-                self.state = States.closing
-
-        self.disconnect()
-
-    #run by thread
-    def recievingLoop(self):
-        while not self.state == States.closing:
-            try:
-                pType,data = getPacket(self.sock,cfg.bufferSize)
-
-                self.packetSwitch(pType,data)
-
-            except:
-                self.serverDisconnected()
+                break
+        self.close()

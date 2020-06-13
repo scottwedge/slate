@@ -1,22 +1,36 @@
 import socket
+import json
 import client.config as cfg
+from packets.packets import makeClientDataDict
 
-def getUsername():
+def getSaved(gui):
     try:
-        file = open("username.txt", 'r')
+        file = open(cfg.userJsonPath, 'r')
+        userDict = json.load(file)
 
-        username = file.readline()
-        if not username:
-            file = open("username.txt", 'w')
-            username = input("Hello New User, Whats Your Name: ")
-            file.write(username)
+    except:
+        file = open(cfg.userJsonPath, 'w')
+        username = gui.prompt("Whats Your Name?")
 
 
-    except IOError:
-        file = open("username.txt", 'w')
-        username = input("Hello New User, Whats Your Name: ")
-        file.write(username)
-    return username
+        for i,color in enumerate(cfg.colors):
+            gui.addText(f"{i}: {color}",color)
+        
+        #loops until valid input
+        colorIndex = -1
+        while not (colorIndex in range(0,len(cfg.colors))):
+            colorIndex = gui.prompt("Whats Your Color (Enter Number)")
+            try:
+                colorIndex = int(colorIndex)
+            except:
+                continue
+        
+        color = cfg.colors[colorIndex]
+
+        userDict = makeClientDataDict(0,username,color)
+        json.dump(userDict,file)
+
+    return userDict
 
 #-------------------#
 #  Socket Wrappers  #
