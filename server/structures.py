@@ -1,5 +1,4 @@
 import threading
-from queue import Queue
 import json
 
 from packets.packets import makeClientDataDict,PType

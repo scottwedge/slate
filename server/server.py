@@ -1,6 +1,5 @@
 import socket
 
-from time import sleep
 from packets.packets import PType,sockWrapper
 from server.helpers import startServer, getRoomName
 from server.structures import ClientData

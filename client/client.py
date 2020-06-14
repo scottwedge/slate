@@ -3,7 +3,6 @@ from time import sleep
 from enum import Enum,auto
 import sys
 import threading
-from queue import Queue
 
 from client.queues import EventQueue
 from packets.packets import PType, sockWrapper

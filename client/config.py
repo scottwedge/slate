@@ -7,7 +7,6 @@ encoding="utf-8"
 #None sets socket to binding mode 
 waitTime=None
 
-typeHotkey='shift'
 
 userJsonPath = "client/user.json"
 

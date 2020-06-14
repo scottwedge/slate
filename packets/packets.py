@@ -1,7 +1,6 @@
 from enum import Enum,auto
 from queue import Queue
 from time import sleep
-from bitarray import bitarray
 import ast
 
 class PType(Enum):
