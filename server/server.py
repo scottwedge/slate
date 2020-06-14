@@ -1,6 +1,7 @@
 import socket
 
-from packets.packets import PType,getPacket,sendPacket,SendQueue
+from time import sleep
+from packets.packets import PType,sockWrapper
 from server.helpers import startServer, getRoomName
 from server.structures import ClientData
 import server.threads as threads
@@ -14,9 +15,6 @@ class Server:
 
         self.roomName = getRoomName()
         self.s = startServer()
-
-
-        self.toSend = SendQueue()
 
         self.clients = []
 
@@ -35,38 +33,46 @@ class Server:
         while self.running:
             try:
                 clientSocket, addr = self.s.accept()
-
-                #gets userdata
-                _,data = getPacket(clientSocket,cfg.bufferSize)
-                clientDataDict = data[0]
-
-                clientUsername = clientDataDict["username"]
-                clientUsername=self.ensureUniqueUsername(clientUsername)
             except:
                 continue
+
+            
+            sockWrap = sockWrapper(clientSocket,cfg.bufferSize)
+
+            #gets userdata
+            sockWrap.listen()
+            _,clientDataDict = sockWrap.get()
+
+            clientUsername = clientDataDict["username"]
+            clientUsername=self.ensureUniqueUsername(clientUsername)
+
             #updates client data dict with proper user id
             clientDataDict["id"]=self.nextClientID
             clientDataDict["username"]=clientUsername
-            sendPacket(clientSocket,PType.clientData,(clientDataDict,))
+
+            sockWrap.addClientData(clientDataDict)
+            sockWrap.send()
+            
+            sockWrap.addIterations(len(self.clients))
+            sockWrap.send()
 
             #sends active users
-            clientDicts=[]
             for client in self.clients:
-                clientDicts.append(client.packageData())
-            sendPacket(clientSocket,PType.clientData,tuple(clientDicts))
+                sockWrap.addClientData(client.dict)
+                sockWrap.send()
             
-            clientSocket.settimeout(cfg.waitTime)
             
-            newClient = ClientData(clientSocket,addr,clientDataDict)
+            newClient = ClientData(sockWrap,addr,clientDataDict)
             self.clients.append(newClient)
+            message = f"> {clientUsername} Joined {self.roomName}"
 
-            self.toSend.addClientData(newClient.dict)
-
-            message=f"> {clientUsername} Joined {self.roomName}"
-            self.toSend.addMessage(message)
-
+            for client in self.clients:
+                client.sock.addClientData(newClient.dict)
+                client.sock.addMessage(message)
+                
+            client.sock.sock.settimeout(cfg.waitTime)
             self.nextClientID+=1
-
+            
     #if 2 users have the same username, one joining is given a suffix
     def ensureUniqueUsername(self,username):
         if username == "":
@@ -92,12 +98,14 @@ class Server:
     #client index is for eot transmission so this method knows who disconnected
     def packetSwitch(self,pType,data,client=None):
         if pType == PType.eot:
+            print("recieved EOT")
             self.dropClient(client)
 
         elif pType == PType.message:
             messangerID, message = data
             username = client.dict["username"]
-            self.toSend.addMessage(message, messangerID,username)
+            for client in self.clients:
+                client.sock.addMessage(message, messangerID,username)
 
         elif pType == PType.clientData:
             print("ClientData Recieved Unexpectedly")
@@ -115,7 +123,8 @@ class Server:
         while self.running:
             for client in self.clients:
                 try:
-                    pType,data = getPacket(client.sock,cfg.bufferSize)
+                    client.sock.listen()
+                    pType,data = client.sock.get()
                     self.packetSwitch(pType,data,client)
                 except:
                     continue
@@ -123,17 +132,14 @@ class Server:
 
     def relay(self):
         while self.running:
-            if not self.toSend.empty():
-                packet,consoleMessage = self.toSend.get()
-                pType,data = packet
-                print(consoleMessage)
-                for client in self.clients:
-                    username = client.dict["username"]
+            for client in self.clients:
+                while not client.sock.outEmpty():
                     try:
                         client.lock.acquire()
-                        sendPacket(client.sock,pType,data)
+                        consoleMessage = client.sock.send()
                         client.lock.release()
-                    
+                        print(consoleMessage)
+
                     #client not recieving packets
                     except:
                         client.lock.release()
@@ -142,19 +148,8 @@ class Server:
 
     def dropClient(self,client):
         username=client.dict["username"]
+        print(f"Dropping {username}")
         clientId = client.dict["id"]
         self.clients.remove(client)
-        self.toSend.addClientDisconnect(clientId,username)
-
-        
-
-    def disconnectAll(self):
-        print(f"Closing {self.roomName}")
         for client in self.clients:
-            try:
-                client.lock.acquire()
-                sendPacket(client.sock,PType.message,(-1,f"{self.roomName} has Closed"))
-                client.lock.release()
-                client.remove(self.clients)
-            except:
-                client.lock.release()
+            client.sock.addClientDisconnect(clientId,username)
