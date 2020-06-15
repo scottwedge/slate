@@ -31,7 +31,7 @@ class Gui:
 
         #main chatbox
         messages=scrolledtext.ScrolledText(window)
-        messages.configure(background= cfg.darkGrey,foreground=cfg.defaultTextColor,borderwidth=0,padx=10)
+        messages.configure(background= cfg.darkGrey,foreground=cfg.defaultTextColor,borderwidth=0,padx=10,state='disabled')
 
         textVar=tk.StringVar(window)
         textInput=tk.Entry(window,textvariable=textVar)
@@ -41,7 +41,7 @@ class Gui:
 
         #clients online panel
         clientsPanel=tk.Text(window)
-        clientsPanel.configure(background=cfg.softBlack, foreground = cfg.defaultTextColor,borderwidth=0,padx=10,pady=5)
+        clientsPanel.configure(background=cfg.softBlack, foreground = cfg.defaultTextColor,borderwidth=0,padx=10,pady=5,state='disabled')
 
         #configure color tags
         for color in cfg.colors:
@@ -72,6 +72,7 @@ class Gui:
         color = clientDict["color"]
         clientId = clientDict["id"]
 
+        self.messages.configure(state='normal')
         if clientId == self.lastMessanger:
             self.messages.insert(tk.END,message+"\n")
         
@@ -79,32 +80,35 @@ class Gui:
             self.lastMessanger = clientId
             self.messages.insert(tk.END,f"\n{username}", color)
             self.messages.insert(tk.END,f"> {message}\n")
-        
-        self.messages.see(tk.END)
+        self.messages.configure(state='disabled')
 
+        self.messages.see(tk.END)
         self.textInput.focus_force()
 
 
     #username is simply for api compatibility
     def addText(self,text,color=cfg.defaultTextColor):
         self.lastMessanger=-1
+
+        self.messages.configure(state='normal')
         self.messages.insert(tk.END,f"\n{text}\n", color)
+        self.messages.configure(state='disabled')
 
         self.messages.see(tk.END)
-        
         self.textInput.focus_force()
         
 
 
     def updateClientsPanel(self,clientsDict,lock):
-        self.clientsPanel.delete(1.0,tk.END)
         lock.acquire()
         clients = clientsDict.values()
+        self.clientsPanel.configure(state='normal')
+        self.clientsPanel.delete(1.0,tk.END)
         for client in clients:
             username = client["username"]
             color = client["color"]
             self.clientsPanel.insert(tk.END,username+"\n", color)
-        
+        self.clientsPanel.configure(state='disabled')
         lock.release()
 
     def textEntered(self,strVar):
