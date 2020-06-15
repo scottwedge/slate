@@ -8,4 +8,6 @@ queueLen=5
 
 waitTime=0.01
 
-noNameReplacement="noName"
+noNameReplacement="Mr.NoName"
+
+roomNamePath = "server/roomName.txt"

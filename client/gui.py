@@ -108,6 +108,7 @@ class Gui:
 
     def textEntered(self,strVar):
         text=strVar.get()
+        text=text.strip()
         strVar.set("")
 
         #puts text into prompt return and 

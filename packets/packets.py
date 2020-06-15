@@ -30,12 +30,16 @@ def encodePacket(pType,data):
         data = clientDictToTup(data)
 
     packet = str((pType.value,data))
+    #adds zero width space to packet seperation character
+    packet = packet.replace(")(",")\u200B(")
     packet = packet.encode("utf-8")
 
     return packet
 
 
 def decodePacket(packet):
+    #removes zero width space from between brackets 
+    packet = packet.replace(")\u200B(",")(")
     packet = ast.literal_eval(packet)
 
     pType,data = packet

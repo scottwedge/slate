@@ -1,4 +1,4 @@
-roomName.txt
+server/roomName.txt
 client/user.json
 server/__pycache__
 packets/__pycache__

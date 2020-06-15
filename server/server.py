@@ -132,7 +132,7 @@ class Server:
     def relay(self):
         while self.running:
             for client in self.clients:
-                while not client.sock.outEmpty():
+                while not client.sock.outEmpty() and client in self.clients:
                     try:
                         client.lock.acquire()
                         consoleMessage = client.sock.send()

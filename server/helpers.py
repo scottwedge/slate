@@ -7,16 +7,16 @@ import server.config as cfg
 
 def getRoomName():
     try:
-        file = open("roomName.txt", 'r')
+        file = open(cfg.roomNamePath, 'r')
 
         name = file.readline()
         if not name:
-            file = open("roomName.txt", 'w')
+            file = open(cfg.roomNamePath, 'w')
             name = input("What Would You Like To Name This Chat Room: ")
             file.write(name)
 
     except IOError:
-        file = open("roomName.txt", 'w')
+        file = open(cfg.roomNamePath, 'w')
         name = input("What Would You Like To Name This Chat Room: ")
         file.write(name)
     print(f"Server Name: {name}")
