@@ -7,6 +7,10 @@ encoding="utf-8"
 #None sets socket to binding mode 
 waitTime=None
 
+#how long the socket will try to connect
+connTimeOut=5
+
+sleepTime=0.01
 
 userJsonPath = "client/user.json"
 

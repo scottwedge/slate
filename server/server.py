@@ -1,4 +1,5 @@
 import socket
+from time import sleep
 
 from packets.packets import PType,sockWrapper
 from server.helpers import startServer, getRoomName
@@ -28,8 +29,10 @@ class Server:
         
         return None
 
+    #run on thread
     def awaitConnections(self):
         while self.running:
+            sleep(cfg.sleepTime)
             try:
                 clientSocket, addr = self.s.accept()
             except:
@@ -118,8 +121,10 @@ class Server:
         else:
             print("Recieved Invalid Packet Type")
 
+    #run on thread
     def recieving(self):
         while self.running:
+            sleep(cfg.sleepTime)
             for client in self.clients:
                 try:
                     client.sock.listen()
@@ -128,9 +133,10 @@ class Server:
                 except:
                     continue
 
-
+    #run on thread
     def relay(self):
         while self.running:
+            sleep(cfg.sleepTime)
             for client in self.clients:
                 while not client.sock.outEmpty() and client in self.clients:
                     try:

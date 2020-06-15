@@ -53,13 +53,17 @@ class Client:
 
     def connect(self):
         while self.running:
-            ip = self.gui.prompt("> What IP Would You Like to Connect to? ")
+            ip = self.gui.prompt("What IP Would You Like to Connect to? ")
+            if not self.running:
+                break
             try:
+
+                self.gui.addText("Attempting to Connect...")
+                self.gui.tkRoot.update()
                 sock = connect(ip)
                 self.sock = sockWrapper(sock,cfg.bufferSize)
             except:
-                if self.running:
-                    self.gui.addText("> Failed To Connect To That IP")
+                self.gui.addText("Failed To Connect To That IP")
                 continue
 
             #sends clientData
@@ -68,7 +72,7 @@ class Client:
                 self.sock.send()
             except:
                 self.sock.close()
-                self.gui.addText("> Connected But With No Response")
+                self.gui.addText("Connected But With No Response")
                 continue
 
             threads.startThreads(self)
@@ -173,6 +177,8 @@ class Client:
                 except:
                     if self.running:
                         self.serverDisconnected()
+            #lowers resource usage
+            sleep(cfg.sleepTime)
         
     #run by thread
     def recievingLoop(self):
@@ -181,7 +187,8 @@ class Client:
                 self.sock.listen()
             except:
                 pass
-
+            #lowers resource usage
+            sleep(cfg.sleepTime)
 
     #run by main thread
     def mainLoop(self):
@@ -197,4 +204,6 @@ class Client:
                 self.gui.tkRoot.update()
             except:
                 break
+            #lowers resource usage
+            sleep(cfg.sleepTime)
         self.close()

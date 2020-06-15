@@ -1,5 +1,6 @@
 import tkinter as tk
 import tkinter.scrolledtext as scrolledtext
+from time import sleep
 import client.config as cfg
 
 class Gui:
@@ -128,6 +129,8 @@ class Gui:
         
         #made true if application was closed during prompt
         while self.prompting:
+            #lowers resource usage
+            sleep(cfg.sleepTime)
             try:
                 self.tkRoot.update()
             except:

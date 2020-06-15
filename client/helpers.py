@@ -36,11 +36,11 @@ def getSaved(gui):
 #  Socket Wrappers  #
 #-------------------#
 def connect(ip):
-    ip.strip()
     #ipv4 socket using tcp
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     #connect to server
+    sock.settimeout(cfg.connTimeOut)
     sock.connect((ip, cfg.port))
     sock.settimeout(cfg.waitTime)
     return sock
