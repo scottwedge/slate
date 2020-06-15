@@ -1,5 +1,6 @@
 import threading
 
+
 def threadWorkSwitch(job,server):
     if job == "connections":
         return server.awaitConnections

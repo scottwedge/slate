@@ -5,21 +5,24 @@ from packets.packets import PType,sockWrapper
 from server.helpers import startServer, getRoomName
 from server.structures import ClientData
 import server.threads as threads
+from server.messageDatabase import MessageDB
 import server.config as cfg
 
 
 class Server:
     def __init__(self):
-        self.nextClientID = 0
         self.running = True
-
         self.roomName = getRoomName()
-        self.s = startServer()
+        self.db = MessageDB()
+        
 
         self.clients = []
-
         self.threads=[]
 
+    def start(self):
+        self.running = True
+        self.nextClientID = 0
+        self.s = startServer()
         threads.startThreads(self)
 
     def getClientById(self,clientId):
@@ -68,6 +71,8 @@ class Server:
             self.clients.append(newClient)
             message = f"> {clientUsername} Joined {self.roomName}"
 
+            self.db.addToQueue(self.db.put,("Server",-1,message))
+            
             for client in self.clients:
                 client.sock.addClientData(newClient.dict)
                 client.sock.addMessage(message)
@@ -77,12 +82,18 @@ class Server:
             
     #if 2 users have the same username, one joining is given a suffix
     def ensureUniqueUsername(self,username):
+        #prevent no name
         if username == "":
             username = cfg.noNameReplacement
 
-        suffix=""
-        i=0
+        #prevent server name
+        elif username == self.roomName:
+            suffix = 1
 
+        #prevent duplicate name
+        else:
+            suffix=""
+        i=0
         while i < len(self.clients):
             clientName = self.clients[i].dict["username"]
             if username+str(suffix) == clientName:
@@ -90,7 +101,7 @@ class Server:
                     suffix=1
                 else:
                     suffix+=1
-                
+
                 i=0
             else:
                 i+=1
@@ -100,14 +111,15 @@ class Server:
     #client index is for eot transmission so this method knows who disconnected
     def packetSwitch(self,pType,data,client=None):
         if pType == PType.eot:
-            print("recieved EOT")
             self.dropClient(client)
 
         elif pType == PType.message:
             messangerID, message = data
             username = client.dict["username"]
+            self.db.addToQueue(self.db.put,(username,messangerID,message))
             for client in self.clients:
                 client.sock.addMessage(message, messangerID,username)
+                
 
         elif pType == PType.clientData:
             print("ClientData Recieved Unexpectedly")
@@ -141,9 +153,8 @@ class Server:
                 while not client.sock.outEmpty() and client in self.clients:
                     try:
                         client.lock.acquire()
-                        consoleMessage = client.sock.send()
+                        client.sock.send()
                         client.lock.release()
-                        print(consoleMessage)
 
                     #client not recieving packets
                     except:
@@ -153,8 +164,40 @@ class Server:
 
     def dropClient(self,client):
         username=client.dict["username"]
-        print(f"Dropping {username}")
+        self.db.addToQueue(self.db.put,("Server",-1,f"{username} Disconnected"))
+
         clientId = client.dict["id"]
+        client.sock.close()
         self.clients.remove(client)
-        for client in self.clients:
-            client.sock.addClientDisconnect(clientId,username)
+        for otherClients in self.clients:
+            otherClients.sock.addClientDisconnect(clientId,username)
+    
+    def close(self):
+        if self.running:
+            print("Closing...")
+            self.db.addToQueue(self.db.put,("Server",-1,f"Closing"))
+
+            #sends client eot
+            for client in self.clients:
+                client.lock.acquire()
+                client.sock.addEot()
+                while not client.sock.outEmpty():
+                    try:
+                        client.sock.send()
+                    except:
+                        break
+                client.lock.release()
+
+            #closes socket and removes client
+            for client in self.clients:
+                self.dropClient(client)
+
+            self.running = False
+
+            self.threads.clear()
+            self.clients.clear()
+            self.s.close()
+            print("Server Closed\n")
+
+        else:
+            print("Server Not Started\n")

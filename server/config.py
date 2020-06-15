@@ -13,3 +13,5 @@ sleepTime = 0.01
 noNameReplacement="Mr.NoName"
 
 roomNamePath = "server/roomName.txt"
+
+dbPath = "server/messages.db"

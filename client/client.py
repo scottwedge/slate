@@ -118,7 +118,7 @@ class Client:
 
     def packetSwitch(self,pType,data):
         if pType == PType.eot:
-            self.eventQueue.addEvent(self.close,())
+            self.eventQueue.addEvent(self.serverDisconnected,())
 
         elif pType == PType.message:
             userId,message=data
