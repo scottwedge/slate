@@ -42,6 +42,7 @@ class Client:
                 self.threads[job].join()
 
         self.clientsDict.clear()
+        self.gui.updateClientsPanel(self.clientsDict,self.dictLock)
         self.threads.clear()
         self.eventQueue.clear()
         self.sock.clear()
