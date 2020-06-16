@@ -122,7 +122,7 @@ class Server:
                 
 
         elif pType == PType.clientData:
-            print("ClientData Recieved Unexpectedly")
+            print("ClientData Received Unexpectedly")
 
         elif pType == PType.clientDisconnect:
             print("ClientDisconnect Packet Intended for Server to Client Only")
@@ -131,7 +131,7 @@ class Server:
             pass
         
         else:
-            print("Recieved Invalid Packet Type")
+            print("Received Invalid Packet Type")
 
     #run on thread
     def recieving(self):

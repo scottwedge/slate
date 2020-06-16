@@ -21,7 +21,7 @@ class Client:
         self.clientsDict = {}
         self.dictLock = threading.Lock()
 
-        self.threadJobs=["recieve","transmit"]
+        self.threadJobs=["receive","transmit"]
         self.threads={}
 
         self.eventQueue = EventQueue()
@@ -156,7 +156,7 @@ class Client:
             pass
         
         else:
-            print("Recieved Invalid Packet Type")
+            print("Received Invalid Packet Type")
 
 
     def serverDisconnected(self):

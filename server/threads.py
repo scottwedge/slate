@@ -5,14 +5,14 @@ def threadWorkSwitch(job,server):
     if job == "connections":
         return server.awaitConnections
 
-    if job == "recieve":
-        return server.recieving
+    if job == "receive":
+        return server.receiving
 
     if job == "relay":
         return server.relay
 
 def startThreads(server):
-    jobs=["connections","recieve","relay"]
+    jobs=["connections","receive","relay"]
     numThreads = len(jobs)
 
     for i in range(0,numThreads):
